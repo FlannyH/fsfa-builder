@@ -74,7 +74,7 @@ void traverse_directory(std::filesystem::path input_path, const int depth) {
 
 int main(int argc, char** argv) {
     if (argc != 3) {
-        printf("Usage: fsfa_builder.exe <input path> <output file>]");
+        printf("Usage: fsfa_builder.exe <input path> <output file>");
     }
 
     const char* input_path = argv[1];
