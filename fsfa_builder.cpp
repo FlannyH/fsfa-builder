@@ -65,8 +65,6 @@ void traverse_directory(std::filesystem::path input_path, const int depth) {
                 extension
             );
         }
-        printf(entry.path().string().c_str());
-        printf("\n");
 
         if (entry.is_directory()) {
             traverse_directory(entry.path(), depth + 1);
