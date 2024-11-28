@@ -44,7 +44,6 @@ std::vector<Item> items;
 
 void traverse_directory(std::filesystem::path input_path, const int depth) {
     for (const auto& entry : std::filesystem::directory_iterator(input_path)) {
-        for (int i = 0; i < depth; ++i) printf("    ");
         if (!entry.is_regular_file() && !entry.is_directory()) {
             throw std::runtime_error("Item was neither file nor directory!");
         }
