@@ -49,9 +49,11 @@ struct Item {
 };
 static_assert(sizeof(Item) == 24);
 
-void traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth) {
+int traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth) {
     std::vector<std::pair<int, std::filesystem::path>> folders_to_parse; // [item_index, path]
     std::vector<std::pair<int, std::filesystem::path>> files_to_parse; // [item_index, path]
+
+    int n_items_in_this_folder = 0;
 
     for (const auto& entry : std::filesystem::directory_iterator(input_path)) {
         if (!entry.is_regular_file() && !entry.is_directory()) {
@@ -66,7 +68,7 @@ void traverse_directory(const std::filesystem::path input_path, std::vector<Item
             );
         }
         
-        if (entry.is_regular_file()){
+        else if (entry.is_regular_file()){
             auto name = entry.path().stem().string();
             auto extension = entry.path().extension().string();
             files_to_parse.emplace_back(items.size(), entry.path());
@@ -76,16 +78,15 @@ void traverse_directory(const std::filesystem::path input_path, std::vector<Item
                 extension.c_str()
             );
         }
+
+        ++n_items_in_this_folder;
     }
 
     for (const auto& [index, path] : folders_to_parse) {
-        std::vector<Item> children;
-        traverse_directory(path, children, binary_data, depth + 1);
-        auto& item = items.at(index);
-        item.size = children.size();
-        item.offset = items.size();
-        items.insert(items.end(), children.begin(), children.end());
+        items.at(index).offset = items.size();
+        items.at(index).size = traverse_directory(path, items, binary_data, depth + 1);
     }
+
     for (const auto& [index, path] : files_to_parse) {
         auto& item = items.at(index);
         item.size = std::filesystem::file_size(path);
@@ -99,6 +100,8 @@ void traverse_directory(const std::filesystem::path input_path, std::vector<Item
         }
         file.close();
     }
+
+    return n_items_in_this_folder;
 }
 
 int main(int argc, char** argv) {
@@ -111,10 +114,16 @@ int main(int argc, char** argv) {
 
     std::vector<Item> items;
     std::vector<uint8_t> binary_data;
-    traverse_directory(input_path, items, binary_data, 0);
+
+    items.emplace_back(Item(
+        ItemType::Folder,
+        "root"
+    ));
+    items.begin()->offset = 1;
+    items.begin()->size = traverse_directory(input_path, items, binary_data, 0);
 
     const size_t header_size = sizeof(Header);
-    const size_t items_size = items.size() * sizeof(items[0]);
+    const size_t items_size = (items.size() + 1) * sizeof(items[0]); // size + 1 for the root folder
     const size_t data_size = binary_data.size();
 
     Header header;
