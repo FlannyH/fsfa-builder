@@ -59,6 +59,7 @@ bool find_argument(int argc, char** argv, const char* long_flag, const char* sho
 int main(int argc, char** argv) {
     if (argc < 3) {
         printf("Usage: fsfa_builder.exe <input path> <output file> [--verbose/-v]");
+        exit(1);
     }
     verbose = find_argument(argc, argv, "--verbose", "-v");
 
