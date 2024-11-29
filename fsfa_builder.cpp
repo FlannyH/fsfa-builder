@@ -141,8 +141,7 @@ void validate(const char*& output_path) {
     printf("\n");
     if (filesize <= 5*1024) printf("Total - %lli bytes", filesize);
     else if (filesize <= 5*1024*1024) printf("Total - %lli KB", filesize / 1024);
-    else if (filesize <= 5*1024*1024*1024) printf("Total - %lli MB", filesize / (1024 * 1024));
-    else printf("Total - %i GB", filesize / (1024 * 1024 * 1024));
+    else printf("Total - %lli MB", filesize / (1024 * 1024));
     printf("\n\n");
 }
 
@@ -218,8 +217,7 @@ void visualize_file_structure(const Item* items_list, int index, int depth) {
         printf("File %s.%s", name, extension);
         if (item->size <= 5*1024) printf(" - %i bytes", item->size);
         else if (item->size <= 5*1024*1024) printf(" - %i KB", item->size / 1024);
-        else if (item->size <= 5*1024*1024*1024) printf(" - %i MB", item->size / (1024 * 1024));
-        else printf(" - %i GB", item->size / (1024 * 1024 * 1024));
+        else printf(" - %i MB", item->size / (1024 * 1024));
     }
 
     else if (item->type == ItemType::Folder) {
