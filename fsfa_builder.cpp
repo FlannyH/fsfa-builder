@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <vector>
 
 enum class ItemType : uint8_t {
@@ -78,6 +80,16 @@ void traverse_directory(const std::filesystem::path input_path, std::vector<Item
         items.insert(items.end(), children.begin(), children.end());
     }
     for (const auto& [index, path] : files_to_parse) {
+        auto& item = items.at(index);
+        item.size = std::filesystem::file_size(path);
+        item.offset = binary_data.size();
+        binary_data.resize(binary_data.size() + item.size);
+        std::ifstream file;
+        file.open(path.string(), std::ios_base::in | std::ios_base::binary);
+        file.read((char*)&binary_data[item.offset], item.size);
+        if (!file.is_open()) {
+            throw std::runtime_error("failed to load file " + path.string());
+        }
     }
 }
 
