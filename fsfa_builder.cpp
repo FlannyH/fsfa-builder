@@ -58,13 +58,13 @@ void traverse_directory(std::filesystem::path input_path, std::vector<Item>& ite
         }
         
         if (entry.is_regular_file()){
-            auto name = entry.path().stem().string().c_str();
-            auto extension = entry.path().extension().string().c_str();
+            auto name = entry.path().stem().string();
+            auto extension = entry.path().extension().string();
             files_to_parse.emplace_back(items.size(), entry.path());
             items.emplace_back(
                 ItemType::File,
-                name,
-                extension
+                name.c_str(),
+                extension.c_str()
             );
         }
     }
