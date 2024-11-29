@@ -96,7 +96,6 @@ int main(int argc, char** argv) {
     file.write((char*)binary_data.data(), data_size);
     file.close();
 
-    // validate
     if (verbose) {
         validate(output_path);
     }
