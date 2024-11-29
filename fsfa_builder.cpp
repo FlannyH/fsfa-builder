@@ -160,7 +160,7 @@ int traverse_directory(const std::filesystem::path input_path, std::vector<Item>
         file.open(path.string(), std::ios_base::in | std::ios_base::binary);
         file.read((char*)&binary_data[item.offset], item.size);
         if (!file.is_open()) {
-            throw std::runtime_error("failed to load file " + path.string());
+            throw std::runtime_error("Failed to load file " + path.string());
         }
         file.close();
     }
@@ -185,6 +185,14 @@ void validate(const char*& output_path) {
             header->file_magic[3] != 'A')
         {
             throw std::runtime_error("Output file validation error: file magic invalid");
+        }
+
+        if (sizeof(Header) + header->items_offset >= filesize) {
+            throw std::runtime_error("Output file validation error: items list starts after the end of the file");
+        }
+
+        if (sizeof(Header) + header->items_offset + (header->n_items * sizeof(Item)) > filesize) {
+            throw std::runtime_error("Output file validation error: items list ends after the end of the file");
         }
 
         Item* items = (Item*)(&contents[sizeof(Header) + header->items_offset]);
