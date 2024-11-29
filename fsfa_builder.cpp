@@ -9,11 +9,11 @@ enum class ItemType : uint8_t {
 };
 
 struct Item {
-    ItemType type;
-    char name[12];
-    char extension[3];
-    uint32_t offset;
-    uint32_t size;
+    ItemType type = ItemType::Folder;
+    char name[12] = "root";
+    char extension[3] = "";
+    uint32_t offset = 0;
+    uint32_t size = 0;
 
     Item(const ItemType item_type, const char* item_name, const char* file_extension = nullptr) {
         // we'll set these later
