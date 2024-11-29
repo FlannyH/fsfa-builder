@@ -126,6 +126,12 @@ int main(int argc, char** argv) {
     header.items_offset = 0;
     header.data_offset = header.items_offset + items_size;
 
+    std::ofstream file;
+    file.open(output_path, std::ios_base::out | std::ios_base::binary);
+    file.write((char*)&header, header_size);
+    file.write((char*)items.data(), items_size);
+    file.write((char*)binary_data.data(), data_size);
+    file.close();
 
     return 0;
 }
