@@ -40,7 +40,7 @@ struct Item {
 };
 static_assert(sizeof(Item) == 24);
 
-void traverse_directory(std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth) {
+void traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth) {
     std::vector<std::pair<int, std::filesystem::path>> folders_to_parse; // [item_index, path]
     std::vector<std::pair<int, std::filesystem::path>> files_to_parse; // [item_index, path]
 
@@ -70,6 +70,12 @@ void traverse_directory(std::filesystem::path input_path, std::vector<Item>& ite
     }
 
     for (const auto& [index, path] : folders_to_parse) {
+        std::vector<Item> children;
+        traverse_directory(path, children, binary_data, depth + 1);
+        auto& item = items.at(index);
+        item.size = children.size();
+        item.offset = items.size();
+        items.insert(items.end(), children.begin(), children.end());
     }
     for (const auto& [index, path] : files_to_parse) {
     }
