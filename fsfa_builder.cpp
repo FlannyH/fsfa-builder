@@ -90,6 +90,7 @@ void traverse_directory(const std::filesystem::path input_path, std::vector<Item
         if (!file.is_open()) {
             throw std::runtime_error("failed to load file " + path.string());
         }
+        file.close();
     }
 }
 
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
 
     const char* input_path = argv[1];
     const char* output_path = argv[2];
+
     std::vector<Item> items;
     std::vector<uint8_t> binary_data;
     traverse_directory(input_path, items, binary_data, 0);
