@@ -105,44 +105,12 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void validate(const char*& output_path) {
-    const auto filesize = std::filesystem::file_size(output_path);
-    std::vector<char> contents(filesize);
-    {
-        std::ifstream fsfa;
-        fsfa.open(output_path, std::ios_base::in | std::ios_base::binary);
-        fsfa.read(contents.data(), filesize);
-        fsfa.close();
-
-        Header* header = (Header*)contents.data();
-        if (
-            header->file_magic[0] != 'F' ||
-            header->file_magic[1] != 'S' ||
-            header->file_magic[2] != 'F' ||
-            header->file_magic[3] != 'A')
-        {
-            throw std::runtime_error("Output file validation error: file magic invalid");
-        }
-
-        Item* items = (Item*)(&contents[sizeof(Header) + header->items_offset]);
-
-        if (
-            items[0].name[0] != 'r' ||
-            items[0].name[1] != 'o' ||
-            items[0].name[2] != 'o' ||
-            items[0].name[3] != 't')
-        {
-            throw std::runtime_error("Output file validation error: first node should be a folder named \"root\", which is not the case!");
-        }
-
-        visualize_file_structure(items);
+bool find_argument(int argc, char** argv, const char* long_flag, const char* short_flag) {
+    for (int i = 1; i < argc; ++i) {
+        if (strncmp(argv[i], long_flag, strlen(long_flag)) == 0) return true;
+        if (strncmp(argv[i], short_flag, strlen(short_flag)) == 0) return true;
     }
-
-    printf("\n");
-    if (filesize <= 5*1024) printf("Total - %lli bytes", filesize);
-    else if (filesize <= 5*1024*1024) printf("Total - %lli KB", filesize / 1024);
-    else printf("Total - %lli MB", filesize / (1024 * 1024));
-    printf("\n\n");
+    return false;
 }
 
 int traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth) {
@@ -200,6 +168,46 @@ int traverse_directory(const std::filesystem::path input_path, std::vector<Item>
     return n_items_in_this_folder;
 }
 
+void validate(const char*& output_path) {
+    const auto filesize = std::filesystem::file_size(output_path);
+    std::vector<char> contents(filesize);
+    {
+        std::ifstream fsfa;
+        fsfa.open(output_path, std::ios_base::in | std::ios_base::binary);
+        fsfa.read(contents.data(), filesize);
+        fsfa.close();
+
+        Header* header = (Header*)contents.data();
+        if (
+            header->file_magic[0] != 'F' ||
+            header->file_magic[1] != 'S' ||
+            header->file_magic[2] != 'F' ||
+            header->file_magic[3] != 'A')
+        {
+            throw std::runtime_error("Output file validation error: file magic invalid");
+        }
+
+        Item* items = (Item*)(&contents[sizeof(Header) + header->items_offset]);
+
+        if (
+            items[0].name[0] != 'r' ||
+            items[0].name[1] != 'o' ||
+            items[0].name[2] != 'o' ||
+            items[0].name[3] != 't')
+        {
+            throw std::runtime_error("Output file validation error: first node should be a folder named \"root\", which is not the case!");
+        }
+
+        visualize_file_structure(items);
+    }
+
+    printf("\n");
+    if (filesize <= 5*1024) printf("Total - %lli bytes", filesize);
+    else if (filesize <= 5*1024*1024) printf("Total - %lli KB", filesize / 1024);
+    else printf("Total - %lli MB", filesize / (1024 * 1024));
+    printf("\n\n");
+}
+
 void visualize_file_structure(const Item* items_list, int index, int depth) {
     printf("\n");
     for (int i = 0; i < depth; ++i) printf(".   ");
@@ -237,12 +245,4 @@ void visualize_file_structure(const Item* items_list, int index, int depth) {
     else {
         throw std::runtime_error("Output file validation error: invalid item type");
     }
-}
-
-bool find_argument(int argc, char** argv, const char* long_flag, const char* short_flag) {
-    for (int i = 1; i < argc; ++i) {
-        if (strncmp(argv[i], long_flag, strlen(long_flag)) == 0) return true;
-        if (strncmp(argv[i], short_flag, strlen(short_flag)) == 0) return true;
-    }
-    return false;
 }
