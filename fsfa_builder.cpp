@@ -51,6 +51,102 @@ struct Item {
 };
 static_assert(sizeof(Item) == 24);
 
+void validate(const char *&output_path);
+int traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth);
+void visualize_file_structure(const Item* items_list, int index = 0, int depth = 0);
+bool find_argument(int argc, char** argv, const char* long_flag, const char* short_flag);
+
+int main(int argc, char** argv) {
+    if (argc < 3) {
+        printf("Usage: fsfa_builder.exe <input path> <output file> [--verbose/-v]");
+    }
+    verbose = find_argument(argc, argv, "--verbose", "-v");
+
+    const char* input_path = argv[1];
+    const char* output_path = argv[2];
+
+    std::vector<Item> items;
+    std::vector<uint8_t> binary_data;
+
+    items.emplace_back(Item(
+        ItemType::Folder,
+        "root"
+    ));
+    items.begin()->offset = 1;
+    items.begin()->size = traverse_directory(input_path, items, binary_data, 0);
+
+    const size_t header_size = sizeof(Header);
+    const size_t items_size = (items.size() + 1) * sizeof(items[0]); // size + 1 for the root folder
+    const size_t data_size = binary_data.size();
+
+    Header header;
+    header.file_magic[0] = 'F';
+    header.file_magic[1] = 'S';
+    header.file_magic[2] = 'F';
+    header.file_magic[3] = 'A';
+    header.n_items = items.size();
+    header.items_offset = 0;
+    header.data_offset = header.items_offset + items_size;
+
+    std::ofstream file;
+    file.open(output_path, std::ios_base::out | std::ios_base::binary);
+    file.write((char*)&header, header_size);
+    file.write((char*)items.data(), items_size);
+    file.write((char*)binary_data.data(), data_size);
+    file.close();
+
+    // validate
+    if (verbose) {
+        validate(output_path);
+    }
+
+    printf ("Packed folder \"%s\" into \"%s\"\n", input_path, output_path);
+
+    return 0;
+}
+
+void validate(const char *&output_path) {
+    const auto filesize = std::filesystem::file_size(output_path);
+    char *contents = new char[filesize];
+    {
+        std::ifstream fsfa;
+        fsfa.open(output_path, std::ios_base::in | std::ios_base::binary);
+        fsfa.read(contents, filesize);
+        fsfa.close();
+
+        Header *header = (Header *)contents;
+        if (
+            header->file_magic[0] != 'F' ||
+            header->file_magic[1] != 'S' ||
+            header->file_magic[2] != 'F' ||
+            header->file_magic[3] != 'A')
+        {
+            throw std::runtime_error("Output file validation error: file magic invalid");
+        }
+
+        Item *items = (Item *)(&contents[sizeof(Header) + header->items_offset]);
+
+        if (
+            items[0].name[0] != 'r' ||
+            items[0].name[1] != 'o' ||
+            items[0].name[2] != 'o' ||
+            items[0].name[3] != 't')
+        {
+            throw std::runtime_error("Output file validation error: first node should be a folder named \"root\", which is not the case!");
+        }
+
+        visualize_file_structure(items);
+    }
+    delete[] contents;
+
+    printf("\n");
+    if (filesize <= 5*1024) printf("Total - %lli bytes", filesize);
+    else if (filesize <= 5*1024*1024) printf("Total - %lli KB", filesize / 1024);
+    else if (filesize <= 5*1024*1024*1024) printf("Total - %lli MB", filesize / (1024 * 1024));
+    else printf("Total - %i GB", filesize / (1024 * 1024 * 1024));
+    printf("\n\n");
+}
+
 int traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth) {
     std::vector<std::pair<int, std::filesystem::path>> folders_to_parse; // [item_index, path]
     std::vector<std::pair<int, std::filesystem::path>> files_to_parse; // [item_index, path]
@@ -106,7 +202,7 @@ int traverse_directory(const std::filesystem::path input_path, std::vector<Item>
     return n_items_in_this_folder;
 }
 
-void visualize_file_structure(const Item* items_list, int index = 0, int depth = 0) {
+void visualize_file_structure(const Item* items_list, int index, int depth) {
     printf("\n");
     for (int i = 0; i < depth; ++i) printf(".   ");
     const Item* item = &items_list[index];
@@ -121,9 +217,9 @@ void visualize_file_structure(const Item* items_list, int index = 0, int depth =
         name[sizeof(name)-1] = 0;
         extension[sizeof(extension)-1] = 0;
         printf("File %s.%s", name, extension);
-        if (item->size <= 1024) printf(" - %i bytes", item->size);
-        else if (item->size <= 1024*1024) printf(" - %i KB", item->size / 1024);
-        else if (item->size <= 1024*1024*1024) printf(" - %i MB", item->size / (1024 * 1024));
+        if (item->size <= 5*1024) printf(" - %i bytes", item->size);
+        else if (item->size <= 5*1024*1024) printf(" - %i KB", item->size / 1024);
+        else if (item->size <= 5*1024*1024*1024) printf(" - %i MB", item->size / (1024 * 1024));
         else printf(" - %i GB", item->size / (1024 * 1024 * 1024));
     }
 
@@ -152,86 +248,4 @@ bool find_argument(int argc, char** argv, const char* long_flag, const char* sho
         if (strncmp(argv[i], short_flag, strlen(short_flag)) == 0) return true;
     }
     return false;
-}
-
-int main(int argc, char** argv) {
-    if (argc < 3) {
-        printf("Usage: fsfa_builder.exe <input path> <output file> [--verbose/-v]");
-    }
-    verbose = find_argument(argc, argv, "--verbose", "-v");
-
-    const char* input_path = argv[1];
-    const char* output_path = argv[2];
-
-    std::vector<Item> items;
-    std::vector<uint8_t> binary_data;
-
-    items.emplace_back(Item(
-        ItemType::Folder,
-        "root"
-    ));
-    items.begin()->offset = 1;
-    items.begin()->size = traverse_directory(input_path, items, binary_data, 0);
-
-    const size_t header_size = sizeof(Header);
-    const size_t items_size = (items.size() + 1) * sizeof(items[0]); // size + 1 for the root folder
-    const size_t data_size = binary_data.size();
-
-    Header header;
-    header.file_magic[0] = 'F';
-    header.file_magic[1] = 'S';
-    header.file_magic[2] = 'F';
-    header.file_magic[3] = 'A';
-    header.n_items = items.size();
-    header.items_offset = 0;
-    header.data_offset = header.items_offset + items_size;
-
-    std::ofstream file;
-    file.open(output_path, std::ios_base::out | std::ios_base::binary);
-    file.write((char*)&header, header_size);
-    file.write((char*)items.data(), items_size);
-    file.write((char*)binary_data.data(), data_size);
-    file.close();
-
-    // validate
-    if (verbose) {
-        const auto filesize = std::filesystem::file_size(output_path);
-        char* contents = new char[filesize];
-        {
-            std::ifstream fsfa;
-            fsfa.open(output_path, std::ios_base::in | std::ios_base::binary);
-            fsfa.read(contents, filesize);
-            fsfa.close();
-
-            Header* header = (Header*)contents;
-            if (
-                header->file_magic[0] != 'F' ||
-                header->file_magic[1] != 'S' ||
-                header->file_magic[2] != 'F' ||
-                header->file_magic[3] != 'A'
-            ) {
-                throw std::runtime_error("Output file validation error: file magic invalid");
-            }
-
-            Item* items = (Item*)(&contents[sizeof(Header) + header->items_offset]);
-
-            if (
-                items[0].name[0] != 'r' ||
-                items[0].name[1] != 'o' ||
-                items[0].name[2] != 'o' ||
-                items[0].name[3] != 't'
-            ) {
-                throw std::runtime_error("Output file validation error: first node should be a folder named \"root\", which is not the case!");
-            }
-
-            visualize_file_structure(items);
-        }
-        delete[] contents;
-
-        printf("\n");
-    }
-
-    printf ("Packed folder \"%s\" into \"%s\"\n", input_path, output_path);
-
-    return 0;
 }
