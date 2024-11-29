@@ -76,8 +76,8 @@ int main(int argc, char** argv) {
     items.begin()->size = traverse_directory(input_path, items, binary_data, 0);
 
     const size_t header_size = sizeof(Header);
-    const size_t items_size = (items.size() + 1) * sizeof(items[0]); // size + 1 for the root folder
-    const size_t data_size = binary_data.size();
+    const size_t items_size = items.size() * sizeof(items[0]);
+    const size_t data_size = binary_data.size() * sizeof(binary_data[0]);
 
     Header header;
     header.file_magic[0] = 'F';
