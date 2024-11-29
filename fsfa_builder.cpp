@@ -5,6 +5,13 @@
 #include <iostream>
 #include <vector>
 
+struct Header {
+    char file_magic[4];
+    uint32_t n_items;
+    uint32_t items_offset;
+    uint32_t data_offset;
+};
+
 enum class ItemType : uint8_t {
     Folder = 0,
     File = 1,
@@ -106,6 +113,18 @@ int main(int argc, char** argv) {
     std::vector<uint8_t> binary_data;
     traverse_directory(input_path, items, binary_data, 0);
 
+    const size_t header_size = sizeof(Header);
+    const size_t items_size = items.size() * sizeof(items[0]);
+    const size_t data_size = binary_data.size();
+
+    Header header;
+    header.file_magic[0] = 'F';
+    header.file_magic[1] = 'S';
+    header.file_magic[2] = 'F';
+    header.file_magic[3] = 'A';
+    header.n_items = items.size();
+    header.items_offset = 0;
+    header.data_offset = header.items_offset + items_size;
 
 
     return 0;
