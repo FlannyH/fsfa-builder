@@ -51,7 +51,7 @@ struct Item {
 };
 static_assert(sizeof(Item) == 24);
 
-void validate(const char *&output_path);
+void validate(const char*& output_path);
 int traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth);
 void visualize_file_structure(const Item* items_list, int index = 0, int depth = 0);
 bool find_argument(int argc, char** argv, const char* long_flag, const char* short_flag);
@@ -105,16 +105,16 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void validate(const char *&output_path) {
+void validate(const char*& output_path) {
     const auto filesize = std::filesystem::file_size(output_path);
-    char *contents = new char[filesize];
+    std::vector<char> contents(filesize);
     {
         std::ifstream fsfa;
         fsfa.open(output_path, std::ios_base::in | std::ios_base::binary);
-        fsfa.read(contents, filesize);
+        fsfa.read(contents.data(), filesize);
         fsfa.close();
 
-        Header *header = (Header *)contents;
+        Header* header = (Header*)contents.data();
         if (
             header->file_magic[0] != 'F' ||
             header->file_magic[1] != 'S' ||
@@ -124,7 +124,7 @@ void validate(const char *&output_path) {
             throw std::runtime_error("Output file validation error: file magic invalid");
         }
 
-        Item *items = (Item *)(&contents[sizeof(Header) + header->items_offset]);
+        Item* items = (Item*)(&contents[sizeof(Header) + header->items_offset]);
 
         if (
             items[0].name[0] != 'r' ||
@@ -137,7 +137,6 @@ void validate(const char *&output_path) {
 
         visualize_file_structure(items);
     }
-    delete[] contents;
 
     printf("\n");
     if (filesize <= 5*1024) printf("Total - %lli bytes", filesize);
