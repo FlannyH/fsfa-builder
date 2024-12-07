@@ -275,6 +275,7 @@ void visualize_file_structure(const Item* items_list, int index, int depth) {
         name[sizeof(name)-1] = 0;
         extension[sizeof(extension)-1] = 0;
         printf("File %s.%s", name, extension);
+        if (item->offset % file_data_align_bytes != 0) throw std::runtime_error("Output file validation error: misaligned file data");
         if (item->size <= 5*1024) printf(" - %i bytes", item->size);
         else if (item->size <= 5*1024*1024) printf(" - %i KB", item->size / 1024);
         else printf(" - %i MB", item->size / (1024 * 1024));
