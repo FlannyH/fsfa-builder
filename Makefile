@@ -1,7 +1,7 @@
 PROJECT = fsfa_builder
 
 CC = g++
-CFLAGS = -O2 -Wall
+CFLAGS = -O3 -Wall -std=c++20
 
 SRCS = 	fsfa_builder.cpp
 

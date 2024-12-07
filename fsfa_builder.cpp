@@ -4,8 +4,13 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <cctype>
+#include <algorithm>
+#include <string>
+#include <concepts>
 
 bool verbose = false;
+int file_data_align_bytes = 16;
 
 struct Header {
     char file_magic[4];
@@ -55,13 +60,18 @@ void validate(const char*& output_path);
 int traverse_directory(const std::filesystem::path input_path, std::vector<Item>& items, std::vector<uint8_t>& binary_data, const int depth);
 void visualize_file_structure(const Item* items_list, int index = 0, int depth = 0);
 bool find_argument(int argc, char** argv, const char* long_flag, const char* short_flag);
+bool find_argument_int(int argc, char** argv, const char* long_flag, const char* short_flag, int& output);
+std::integral auto next_multiple_of(const std::integral auto value, const std::integral auto alignment) {
+    return (value + alignment - 1) / alignment * alignment;
+}
 
 int main(int argc, char** argv) {
     if (argc < 3) {
-        printf("Usage: fsfa_builder.exe <input path> <output file> [--verbose/-v]");
+        printf("Usage: fsfa_builder.exe <input path> <output file> [--verbose/-v] [--align/-a <file_alignment>]");
         exit(1);
     }
     verbose = find_argument(argc, argv, "--verbose", "-v");
+    find_argument_int(argc, argv, "--align", "-a", file_data_align_bytes);
 
     const char* input_path = argv[1];
     const char* output_path = argv[2];
@@ -80,6 +90,10 @@ int main(int argc, char** argv) {
     const size_t items_size = items.size() * sizeof(items[0]);
     const size_t data_size = binary_data.size() * sizeof(binary_data[0]);
 
+    const int binary_offset = (header_size + items_size);
+    const int padded_binary_offset = next_multiple_of(binary_offset, file_data_align_bytes);
+    const int n_pad_bytes = padded_binary_offset - binary_offset;
+
     Header header;
     header.file_magic[0] = 'F';
     header.file_magic[1] = 'S';
@@ -87,12 +101,15 @@ int main(int argc, char** argv) {
     header.file_magic[3] = 'A';
     header.n_items = items.size();
     header.items_offset = 0;
-    header.data_offset = header.items_offset + items_size;
+    header.data_offset = padded_binary_offset;
+
+    std::vector<char> padding(n_pad_bytes);
 
     std::ofstream file;
     file.open(output_path, std::ios_base::out | std::ios_base::binary);
     file.write((char*)&header, header_size);
     file.write((char*)items.data(), items_size);
+    file.write((char*)padding.data(), padding.size());
     file.write((char*)binary_data.data(), data_size);
     file.close();
 
@@ -107,8 +124,31 @@ int main(int argc, char** argv) {
 
 bool find_argument(int argc, char** argv, const char* long_flag, const char* short_flag) {
     for (int i = 1; i < argc; ++i) {
-        if (strncmp(argv[i], long_flag, strlen(long_flag)) == 0) return true;
-        if (strncmp(argv[i], short_flag, strlen(short_flag)) == 0) return true;
+        if (
+            strncmp(argv[i], long_flag, strlen(long_flag)) == 0 ||
+            strncmp(argv[i], short_flag, strlen(short_flag)) == 0
+        ) return true;
+    }
+    return false;
+}
+
+bool find_argument_int(int argc, char** argv, const char* long_flag, const char* short_flag, int& output) {
+    for (int i = 1; i < argc; ++i) {
+        if (
+            strncmp(argv[i], long_flag, strlen(long_flag)) == 0 ||
+            strncmp(argv[i], short_flag, strlen(short_flag)) == 0
+        ) {
+            if (i + 1 == argc) return false;
+            const auto value = std::string(argv[i+1]);
+            if (value.empty()) return false;
+            if (std::all_of(value.begin(), value.end(), [](char i){
+                return ((i >= '0' && i <= '9') || i == ' ');
+            })) {
+                output = std::stoi(value);
+                return true;
+            }
+            printf("Unexpected value \"%s\" for %s/%s, expected integer\n", value.c_str(), long_flag, short_flag);
+        }
     }
     return false;
 }
@@ -152,6 +192,10 @@ int traverse_directory(const std::filesystem::path input_path, std::vector<Item>
     }
 
     for (const auto& [index, path] : files_to_parse) {
+        // pad to multiple of `file_data_align_bytes`
+        binary_data.resize(next_multiple_of(binary_data.size(), file_data_align_bytes));
+
+        // append file data
         auto& item = items.at(index);
         item.size = std::filesystem::file_size(path);
         item.offset = binary_data.size();
