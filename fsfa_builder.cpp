@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     header.file_magic[2] = 'F';
     header.file_magic[3] = 'A';
     header.n_items = items.size();
-    header.items_offset = 0;
+    header.items_offset = sizeof(Header);
     header.data_offset = padded_binary_offset;
 
     std::vector<char> padding(n_pad_bytes);
